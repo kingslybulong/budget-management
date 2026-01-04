@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@a
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AuthService, ExpenseService } from '../../../services';
+import { AuthService, ExpenseService, BudgetService } from '../../../services';
 import { Expense, ExpenseStatus } from '../../../models';
 import { StatusBadgeComponent } from '../../../shared/components';
 import { PesoPipe, CategoryNamePipe } from '../../../shared/pipes';
@@ -53,49 +53,57 @@ import { PesoPipe, CategoryNamePipe } from '../../../shared/pipes';
         </div>
       </div>
 
-      <!-- Filter Tabs -->
-      <ul class="nav nav-tabs mb-4">
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="activeFilter() === 'pending'"
-            (click)="setFilter('pending')"
-          >
-            <i class="bi bi-hourglass-split me-1"></i>
-            Pending
-            @if (pendingExpenses().length > 0) {
-              <span class="badge bg-warning text-dark ms-1">{{ pendingExpenses().length }}</span>
-            }
-          </button>
-        </li>
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="activeFilter() === 'approved'"
-            (click)="setFilter('approved')"
-          >
-            <i class="bi bi-check-circle me-1"></i> Approved
-          </button>
-        </li>
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="activeFilter() === 'rejected'"
-            (click)="setFilter('rejected')"
-          >
-            <i class="bi bi-x-circle me-1"></i> Rejected
-          </button>
-        </li>
-        <li class="nav-item">
-          <button
-            class="nav-link"
-            [class.active]="activeFilter() === 'all'"
-            (click)="setFilter('all')"
-          >
-            <i class="bi bi-list me-1"></i> All
-          </button>
-        </li>
-      </ul>
+      <!-- Filter Tabs and Category Filter -->
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
+        <ul class="nav nav-tabs mb-0 flex-nowrap overflow-auto" style="flex-shrink: 0;">
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeFilter() === 'pending'"
+              (click)="setFilter('pending')"
+            >
+              <i class="bi bi-hourglass-split me-1"></i>
+              Pending
+              @if (pendingExpenses().length > 0) {
+                <span class="badge bg-warning text-dark ms-1">{{ pendingExpenses().length }}</span>
+              }
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeFilter() === 'approved'"
+              (click)="setFilter('approved')"
+            >
+              <i class="bi bi-check-circle me-1"></i> Approved
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeFilter() === 'rejected'"
+              (click)="setFilter('rejected')"
+            >
+              <i class="bi bi-x-circle me-1"></i> Rejected
+            </button>
+          </li>
+          <li class="nav-item">
+            <button
+              class="nav-link"
+              [class.active]="activeFilter() === 'all'"
+              (click)="setFilter('all')"
+            >
+              <i class="bi bi-list me-1"></i> All
+            </button>
+          </li>
+        </ul>
+        <select class="form-select form-select-sm" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)" style="width: auto; min-width: 180px;">
+          <option value="all">All Categories</option>
+          @for (cat of availableCategories(); track cat.type) {
+            <option [value]="cat.type">{{ cat.name }}</option>
+          }
+        </select>
+      </div>
 
       <!-- Success/Error Messages -->
       @if (successMessage()) {
@@ -342,9 +350,23 @@ import { PesoPipe, CategoryNamePipe } from '../../../shared/pipes';
 export class ExpenseApprovalComponent {
   private readonly authService = inject(AuthService);
   private readonly expenseService = inject(ExpenseService);
+  private readonly budgetService = inject(BudgetService);
 
   /** Current filter selection */
   protected readonly activeFilter = signal<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+
+  /** Category filter */
+  protected readonly filterCategory = signal('all');
+
+  /** Get available categories from the current budget */
+  protected readonly availableCategories = computed(() => {
+    const budget = this.budgetService.currentBudget();
+    if (!budget) return [];
+    return budget.categories
+      .filter(cat => cat.monthlyLimit > 0)
+      .map(cat => ({ type: cat.type, name: cat.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   /** Messages */
   protected readonly successMessage = signal('');
@@ -362,20 +384,33 @@ export class ExpenseApprovalComponent {
   protected readonly approvedExpenses = this.expenseService.approvedExpenses;
   protected readonly rejectedExpenses = this.expenseService.rejectedExpenses;
 
-  /** Filtered expenses based on active filter */
+  /** Filtered expenses based on active filter and category */
   protected readonly filteredExpenses = computed(() => {
+    let expenses: Expense[];
     switch (this.activeFilter()) {
       case 'pending':
-        return this.pendingExpenses();
+        expenses = this.pendingExpenses();
+        break;
       case 'approved':
-        return this.approvedExpenses();
+        expenses = this.approvedExpenses();
+        break;
       case 'rejected':
-        return this.rejectedExpenses();
+        expenses = this.rejectedExpenses();
+        break;
       case 'all':
-        return this.expenseService.expenses();
+        expenses = this.expenseService.expenses();
+        break;
       default:
-        return [];
+        expenses = [];
     }
+
+    // Apply category filter
+    const categoryFilter = this.filterCategory();
+    if (categoryFilter !== 'all') {
+      expenses = expenses.filter(e => e.category === categoryFilter);
+    }
+
+    return expenses;
   });
 
   /**

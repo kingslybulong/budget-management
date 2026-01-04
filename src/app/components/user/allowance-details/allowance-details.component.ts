@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService, AllowanceService } from '../../../services';
-import { AllowanceSpendingCategory, SavingsGoal } from '../../../models';
+import { SavingsGoal } from '../../../models';
 import { PesoPipe } from '../../../shared/pipes';
 
 /**
@@ -275,22 +275,41 @@ import { PesoPipe } from '../../../shared/pipes';
 
       <!-- Spending History -->
       <div class="card shadow-sm mb-4">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">
-            <i class="bi bi-clock-history me-2"></i>Recent Spending
-          </h5>
-          <button class="btn btn-sm btn-primary" (click)="openSpendingModal()">
-            <i class="bi bi-plus me-1"></i> Record Spending
-          </button>
+        <div class="card-header bg-white">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <h5 class="mb-0">
+              <i class="bi bi-clock-history me-2"></i>Recent Spending
+            </h5>
+            <div class="d-flex gap-2 align-items-center">
+              @if (availableCategories().length > 0) {
+                <select class="form-select form-select-sm" style="width: auto;" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
+                  <option value="all">All Categories</option>
+                  @for (cat of availableCategories(); track cat) {
+                    <option [value]="cat">{{ cat }}</option>
+                  }
+                </select>
+              }
+              <button class="btn btn-sm btn-primary" (click)="openSpendingModal()">
+                <i class="bi bi-plus me-1"></i> Record
+              </button>
+            </div>
+          </div>
         </div>
         <div class="card-body p-0">
-          @if (spendingHistory().length === 0) {
+          @if (filteredSpendingHistory().length === 0) {
             <div class="text-center py-5 text-muted">
               <i class="bi bi-receipt fs-1 mb-2 d-block"></i>
-              <p class="mb-2">No spending recorded this month.</p>
-              <button class="btn btn-primary btn-sm" (click)="openSpendingModal()">
-                <i class="bi bi-plus-circle me-1"></i> Record Your First Spending
-              </button>
+              @if (filterCategory() === 'all') {
+                <p class="mb-2">No spending recorded this month.</p>
+                <button class="btn btn-primary btn-sm" (click)="openSpendingModal()">
+                  <i class="bi bi-plus-circle me-1"></i> Record Your First Spending
+                </button>
+              } @else {
+                <p class="mb-2">No spending in this category.</p>
+                <button class="btn btn-outline-secondary btn-sm" (click)="filterCategory.set('all')">
+                  Show All Categories
+                </button>
+              }
             </div>
           } @else {
             <div class="table-responsive">
@@ -301,10 +320,11 @@ import { PesoPipe } from '../../../shared/pipes';
                     <th>Description</th>
                     <th>Category</th>
                     <th class="text-end">Amount</th>
+                    <th class="text-center" style="width: 60px;"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (item of spendingHistory(); track $index) {
+                  @for (item of filteredSpendingHistory(); track $index) {
                     <tr>
                       <td>{{ item.date | date:'MMM d' }}</td>
                       <td>{{ item.description }}</td>
@@ -314,6 +334,15 @@ import { PesoPipe } from '../../../shared/pipes';
                         </span>
                       </td>
                       <td class="text-end fw-semibold text-danger">-{{ item.amount | peso }}</td>
+                      <td class="text-center">
+                        <button
+                          class="btn btn-sm btn-outline-danger"
+                          (click)="deleteSpending(item.id)"
+                          title="Delete this entry"
+                        >
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </td>
                     </tr>
                   }
                 </tbody>
@@ -607,11 +636,19 @@ import { PesoPipe } from '../../../shared/pipes';
 
                 <div class="mb-3">
                   <label class="form-label">Category</label>
-                  <select class="form-select" [(ngModel)]="spendingCategory">
-                    @for (cat of categoryOptions; track cat.value) {
-                      <option [value]="cat.value">{{ cat.label }}</option>
+                  <input
+                    type="text"
+                    class="form-control"
+                    [(ngModel)]="spendingCategory"
+                    list="categoryList"
+                    placeholder="Enter or select a category"
+                  />
+                  <datalist id="categoryList">
+                    @for (cat of suggestedCategories; track cat) {
+                      <option [value]="cat"></option>
                     }
-                  </select>
+                  </datalist>
+                  <small class="text-muted">Type your own or choose from suggestions</small>
                 </div>
 
                 <div class="mb-3">
@@ -836,16 +873,16 @@ export class AllowanceDetailsComponent {
   protected readonly availableYears = [2024, 2025, 2026, 2027];
   protected readonly quickAmounts = [20, 50, 100, 200, 500];
 
-  // ==================== CATEGORY OPTIONS ====================
-  protected readonly categoryOptions = [
-    { value: AllowanceSpendingCategory.FOOD_SNACKS, label: '🍔 Food & Snacks' },
-    { value: AllowanceSpendingCategory.ENTERTAINMENT, label: '🎮 Entertainment' },
-    { value: AllowanceSpendingCategory.SCHOOL_SUPPLIES, label: '📚 School Supplies' },
-    { value: AllowanceSpendingCategory.TRANSPORTATION, label: '🚌 Transportation' },
-    { value: AllowanceSpendingCategory.CLOTHING, label: '👕 Clothing' },
-    { value: AllowanceSpendingCategory.SAVINGS, label: '🐷 Savings' },
-    { value: AllowanceSpendingCategory.GIFTS, label: '🎁 Gifts' },
-    { value: AllowanceSpendingCategory.OTHER, label: '📦 Other' },
+  // ==================== SUGGESTED CATEGORIES ====================
+  protected readonly suggestedCategories = [
+    'Food & Snacks',
+    'Entertainment',
+    'School Supplies',
+    'Transportation',
+    'Clothing',
+    'Savings',
+    'Gifts',
+    'Other',
   ];
 
   // ==================== MODAL STATES ====================
@@ -857,7 +894,7 @@ export class AllowanceDetailsComponent {
 
   // ==================== FORM FIELDS ====================
   protected spendingDescription = '';
-  protected spendingCategory = AllowanceSpendingCategory.OTHER;
+  protected spendingCategory = '';
   protected spendingAmount = 0;
   protected goalName = '';
   protected goalAmount = 0;
@@ -871,10 +908,29 @@ export class AllowanceDetailsComponent {
     return this.allowanceService.getAllowance(user.id, this.selectedMonth(), this.selectedYear()) || null;
   });
 
+  protected readonly filterCategory = signal<string>('all');
+
   protected readonly spendingHistory = computed(() => {
     const user = this.authService.currentUser();
     if (!user) return [];
     return this.allowanceService.getTransactionsForMonth(user.id, this.selectedMonth(), this.selectedYear());
+  });
+
+  // Get unique categories from spending history for filter dropdown
+  protected readonly availableCategories = computed(() => {
+    const history = this.spendingHistory();
+    const categories = new Set<string>();
+    history.forEach(item => {
+      if (item.category) categories.add(item.category);
+    });
+    return Array.from(categories).sort();
+  });
+
+  protected readonly filteredSpendingHistory = computed(() => {
+    const history = this.spendingHistory();
+    const category = this.filterCategory();
+    if (category === 'all') return history;
+    return history.filter(item => item.category === category);
   });
 
   protected readonly savingsGoals = computed(() => {
@@ -894,7 +950,7 @@ export class AllowanceDetailsComponent {
     if (!user) return [];
     const byCategory = this.allowanceService.getSpendingByCategory(user.id, this.selectedMonth(), this.selectedYear());
     return Object.entries(byCategory).map(([category, amount]) => ({
-      category: category as AllowanceSpendingCategory,
+      category,
       amount
     }));
   });
@@ -964,44 +1020,39 @@ export class AllowanceDetailsComponent {
   }
 
   // ==================== CATEGORY HELPERS ====================
-  protected getCategoryLabel(category: AllowanceSpendingCategory | undefined): string {
-    if (!category) return 'Other';
-    const found = this.categoryOptions.find(c => c.value === category);
-    return found?.label.replace(/^.+\s/, '') || 'Other';
+  protected getCategoryLabel(category: string | undefined): string {
+    return category || 'Other';
   }
 
-  protected getCategoryBadgeClass(category: AllowanceSpendingCategory | undefined): string {
-    const classes: Record<AllowanceSpendingCategory, string> = {
-      [AllowanceSpendingCategory.FOOD_SNACKS]: 'bg-warning text-dark',
-      [AllowanceSpendingCategory.ENTERTAINMENT]: 'bg-purple text-white',
-      [AllowanceSpendingCategory.SCHOOL_SUPPLIES]: 'bg-info',
-      [AllowanceSpendingCategory.TRANSPORTATION]: 'bg-secondary',
-      [AllowanceSpendingCategory.CLOTHING]: 'bg-pink',
-      [AllowanceSpendingCategory.SAVINGS]: 'bg-success',
-      [AllowanceSpendingCategory.GIFTS]: 'bg-danger',
-      [AllowanceSpendingCategory.OTHER]: 'bg-dark',
-    };
-    return category ? classes[category] : 'bg-secondary';
+  protected getCategoryBadgeClass(category: string | undefined): string {
+    if (!category) return 'bg-secondary';
+    const lowerCat = category.toLowerCase();
+    if (lowerCat.includes('food') || lowerCat.includes('snack')) return 'bg-warning text-dark';
+    if (lowerCat.includes('entertainment') || lowerCat.includes('game')) return 'bg-purple text-white';
+    if (lowerCat.includes('school') || lowerCat.includes('supplies')) return 'bg-info';
+    if (lowerCat.includes('transport')) return 'bg-secondary';
+    if (lowerCat.includes('cloth')) return 'bg-pink';
+    if (lowerCat.includes('saving')) return 'bg-success';
+    if (lowerCat.includes('gift')) return 'bg-danger';
+    return 'bg-primary';
   }
 
-  protected getCategoryProgressClass(category: AllowanceSpendingCategory): string {
-    const classes: Record<AllowanceSpendingCategory, string> = {
-      [AllowanceSpendingCategory.FOOD_SNACKS]: 'bg-warning',
-      [AllowanceSpendingCategory.ENTERTAINMENT]: 'bg-purple',
-      [AllowanceSpendingCategory.SCHOOL_SUPPLIES]: 'bg-info',
-      [AllowanceSpendingCategory.TRANSPORTATION]: 'bg-secondary',
-      [AllowanceSpendingCategory.CLOTHING]: 'bg-pink',
-      [AllowanceSpendingCategory.SAVINGS]: 'bg-success',
-      [AllowanceSpendingCategory.GIFTS]: 'bg-danger',
-      [AllowanceSpendingCategory.OTHER]: 'bg-dark',
-    };
-    return classes[category];
+  protected getCategoryProgressClass(category: string): string {
+    const lowerCat = category.toLowerCase();
+    if (lowerCat.includes('food') || lowerCat.includes('snack')) return 'bg-warning';
+    if (lowerCat.includes('entertainment') || lowerCat.includes('game')) return 'bg-purple';
+    if (lowerCat.includes('school') || lowerCat.includes('supplies')) return 'bg-info';
+    if (lowerCat.includes('transport')) return 'bg-secondary';
+    if (lowerCat.includes('cloth')) return 'bg-pink';
+    if (lowerCat.includes('saving')) return 'bg-success';
+    if (lowerCat.includes('gift')) return 'bg-danger';
+    return 'bg-primary';
   }
 
   // ==================== SPENDING MODAL ====================
   protected openSpendingModal(): void {
     this.spendingDescription = '';
-    this.spendingCategory = AllowanceSpendingCategory.OTHER;
+    this.spendingCategory = '';
     this.spendingAmount = 0;
     this.showSpendingModal.set(true);
   }
@@ -1032,6 +1083,38 @@ export class AllowanceDetailsComponent {
     this.successMessage.set(`₱${this.spendingAmount} recorded successfully!`);
     this.closeSpendingModal();
     setTimeout(() => this.successMessage.set(''), 3000);
+  }
+
+  protected async deleteSpending(transactionId: string): Promise<void> {
+    // Find the transaction first to check if it's a savings transaction
+    const transaction = this.spendingHistory().find(t => t.id === transactionId);
+    if (!transaction) return;
+
+    // Check if this is a savings transaction
+    const isSavingsTransaction = transaction.category === 'Savings' && transaction.description.startsWith('Savings: ');
+
+    const confirmMessage = isSavingsTransaction
+      ? 'Are you sure you want to delete this savings entry? The amount will be restored to your allowance and deducted from the savings goal.'
+      : 'Are you sure you want to delete this spending entry? The amount will be restored to your allowance.';
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    // If it's a savings transaction, deduct from the savings goal
+    if (isSavingsTransaction) {
+      const goalName = transaction.description.replace('Savings: ', '');
+      const user = this.authService.currentUser();
+      if (user) {
+        await this.allowanceService.deductFromSavingsGoal(goalName, user.id, transaction.amount);
+      }
+    }
+
+    const success = await this.allowanceService.deleteTransaction(transactionId);
+    if (success) {
+      this.successMessage.set('Spending entry deleted successfully!');
+      setTimeout(() => this.successMessage.set(''), 3000);
+    }
   }
 
   // ==================== GOAL MODAL ====================
@@ -1086,10 +1169,36 @@ export class AllowanceDetailsComponent {
     const goal = this.selectedGoal();
     if (!goal || this.addToGoalAmount <= 0) return;
 
+    const user = this.authService.currentUser();
+    if (!user) return;
+
+    // Check if user has enough remaining allowance
+    const remaining = this.remainingAmount();
+    if (this.addToGoalAmount > remaining) {
+      alert(`You only have ₱${remaining.toFixed(2)} remaining in your allowance.`);
+      return;
+    }
+
+    // Deduct from allowance as "Savings" spending
+    const spendingSuccess = await this.allowanceService.spendFromAllowanceWithCategory(
+      user.id,
+      this.addToGoalAmount,
+      `Savings: ${goal.name}`,
+      'Savings',
+      this.selectedMonth(),
+      this.selectedYear()
+    );
+
+    if (!spendingSuccess) {
+      alert('Failed to deduct from allowance. Please try again.');
+      return;
+    }
+
+    // Add to savings goal
     await this.allowanceService.addToSavingsGoal(goal.id, this.addToGoalAmount);
 
-    const remaining = goal.targetAmount - goal.currentAmount - this.addToGoalAmount;
-    if (remaining <= 0) {
+    const goalRemaining = goal.targetAmount - goal.currentAmount - this.addToGoalAmount;
+    if (goalRemaining <= 0) {
       this.successMessage.set(`🎉 Congratulations! You've reached your goal!`);
     } else {
       this.successMessage.set(`₱${this.addToGoalAmount} added to ${goal.name}!`);

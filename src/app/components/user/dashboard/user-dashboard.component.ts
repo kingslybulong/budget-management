@@ -2,7 +2,6 @@ import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { AuthService, ExpenseService, AllowanceService } from '../../../services';
-import { AllowanceSpendingCategory } from '../../../models';
 import { StatsCardComponent, StatusBadgeComponent } from '../../../shared/components';
 import { PesoPipe, CategoryNamePipe } from '../../../shared/pipes';
 
@@ -453,7 +452,7 @@ export class UserDashboardComponent {
   protected readonly spendingCategories = computed(() => {
     const byCategory = this.allowanceService.getSpendingByCategory(this.userId());
     return Object.entries(byCategory).map(([category, amount]) => ({
-      category: category as AllowanceSpendingCategory,
+      category,
       amount
     }));
   });
@@ -468,45 +467,31 @@ export class UserDashboardComponent {
     return (amount / spent) * 100;
   }
 
-  protected getCategoryEmoji(category: AllowanceSpendingCategory): string {
-    const emojis: Record<AllowanceSpendingCategory, string> = {
-      [AllowanceSpendingCategory.FOOD_SNACKS]: '🍔',
-      [AllowanceSpendingCategory.ENTERTAINMENT]: '🎮',
-      [AllowanceSpendingCategory.SCHOOL_SUPPLIES]: '📚',
-      [AllowanceSpendingCategory.TRANSPORTATION]: '🚌',
-      [AllowanceSpendingCategory.CLOTHING]: '👕',
-      [AllowanceSpendingCategory.SAVINGS]: '🐷',
-      [AllowanceSpendingCategory.GIFTS]: '🎁',
-      [AllowanceSpendingCategory.OTHER]: '📦',
-    };
-    return emojis[category] || '📦';
+  protected getCategoryEmoji(category: string): string {
+    const lowerCat = category.toLowerCase();
+    if (lowerCat.includes('food') || lowerCat.includes('snack')) return '🍔';
+    if (lowerCat.includes('entertainment') || lowerCat.includes('game')) return '🎮';
+    if (lowerCat.includes('school') || lowerCat.includes('supplies')) return '📚';
+    if (lowerCat.includes('transport')) return '🚌';
+    if (lowerCat.includes('cloth')) return '👕';
+    if (lowerCat.includes('saving')) return '🐷';
+    if (lowerCat.includes('gift')) return '🎁';
+    return '📦';
   }
 
-  protected getCategoryLabel(category: AllowanceSpendingCategory): string {
-    const labels: Record<AllowanceSpendingCategory, string> = {
-      [AllowanceSpendingCategory.FOOD_SNACKS]: 'Food & Snacks',
-      [AllowanceSpendingCategory.ENTERTAINMENT]: 'Entertainment',
-      [AllowanceSpendingCategory.SCHOOL_SUPPLIES]: 'School Supplies',
-      [AllowanceSpendingCategory.TRANSPORTATION]: 'Transportation',
-      [AllowanceSpendingCategory.CLOTHING]: 'Clothing',
-      [AllowanceSpendingCategory.SAVINGS]: 'Savings',
-      [AllowanceSpendingCategory.GIFTS]: 'Gifts',
-      [AllowanceSpendingCategory.OTHER]: 'Other',
-    };
-    return labels[category] || 'Other';
+  protected getCategoryLabel(category: string): string {
+    return category || 'Other';
   }
 
-  protected getCategoryProgressClass(category: AllowanceSpendingCategory): string {
-    const classes: Record<AllowanceSpendingCategory, string> = {
-      [AllowanceSpendingCategory.FOOD_SNACKS]: 'bg-warning',
-      [AllowanceSpendingCategory.ENTERTAINMENT]: 'bg-info',
-      [AllowanceSpendingCategory.SCHOOL_SUPPLIES]: 'bg-primary',
-      [AllowanceSpendingCategory.TRANSPORTATION]: 'bg-secondary',
-      [AllowanceSpendingCategory.CLOTHING]: 'bg-danger',
-      [AllowanceSpendingCategory.SAVINGS]: 'bg-success',
-      [AllowanceSpendingCategory.GIFTS]: 'bg-danger',
-      [AllowanceSpendingCategory.OTHER]: 'bg-dark',
-    };
-    return classes[category] || 'bg-secondary';
+  protected getCategoryProgressClass(category: string): string {
+    const lowerCat = category.toLowerCase();
+    if (lowerCat.includes('food') || lowerCat.includes('snack')) return 'bg-warning';
+    if (lowerCat.includes('entertainment') || lowerCat.includes('game')) return 'bg-info';
+    if (lowerCat.includes('school') || lowerCat.includes('supplies')) return 'bg-primary';
+    if (lowerCat.includes('transport')) return 'bg-secondary';
+    if (lowerCat.includes('cloth')) return 'bg-danger';
+    if (lowerCat.includes('saving')) return 'bg-success';
+    if (lowerCat.includes('gift')) return 'bg-danger';
+    return 'bg-dark';
   }
 }

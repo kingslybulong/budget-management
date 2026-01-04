@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@a
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ExpenseService } from '../../../services';
+import { ExpenseService, BudgetService } from '../../../services';
 import { ExpenseStatus } from '../../../models';
 import { PesoPipe, CategoryNamePipe } from '../../../shared/pipes';
 import { StatusBadgeComponent } from '../../../shared/components';
@@ -64,32 +64,43 @@ import { StatusBadgeComponent } from '../../../shared/components';
           <div class="row g-3 align-items-end">
             <div class="col-md-3">
               <label class="form-label">Filter by Status</label>
-              <select class="form-select" [(ngModel)]="filterStatus">
+              <select class="form-select" [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
                 <option value="approved">Approved</option>
                 <option value="rejected">Rejected</option>
               </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+              <label class="form-label">Filter by Category</label>
+              <select class="form-select" [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
+                <option value="all">All Categories</option>
+                @for (cat of availableCategories(); track cat.type) {
+                  <option [value]="cat.type">{{ cat.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-md-2">
               <label class="form-label">Filter by User</label>
-              <select class="form-select" [(ngModel)]="filterUser">
+              <select class="form-select" [ngModel]="filterUser()" (ngModelChange)="filterUser.set($event)">
                 <option value="all">All Users</option>
                 @for (user of uniqueUsers(); track user) {
                   <option [value]="user">{{ user }}</option>
                 }
               </select>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <label class="form-label">Search</label>
               <input
                 type="text"
                 class="form-control"
-                [(ngModel)]="searchTerm"
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event)"
                 placeholder="Search description..."
               />
             </div>
             <div class="col-md-2">
+              <label class="form-label">&nbsp;</label>
               <button class="btn btn-outline-secondary w-100" (click)="clearFilters()">
                 <i class="bi bi-x-circle me-1"></i> Clear
               </button>
@@ -172,12 +183,24 @@ import { StatusBadgeComponent } from '../../../shared/components';
 })
 export class ExpensesViewComponent {
   private readonly expenseService = inject(ExpenseService);
+  private readonly budgetService = inject(BudgetService);
 
-  protected filterStatus = 'all';
-  protected filterUser = 'all';
-  protected searchTerm = '';
+  protected readonly filterStatus = signal('all');
+  protected readonly filterCategory = signal('all');
+  protected readonly filterUser = signal('all');
+  protected readonly searchTerm = signal('');
 
   protected readonly allExpenses = this.expenseService.expenses;
+
+  /** Get available categories from the current budget */
+  protected readonly availableCategories = computed(() => {
+    const budget = this.budgetService.currentBudget();
+    if (!budget) return [];
+    return budget.categories
+      .filter(cat => cat.monthlyLimit > 0)
+      .map(cat => ({ type: cat.type, name: cat.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
 
   protected readonly uniqueUsers = computed(() => {
     const users = new Set(this.allExpenses().map((e) => e.userName));
@@ -188,26 +211,34 @@ export class ExpensesViewComponent {
     let expenses = this.allExpenses();
 
     // Filter by status
-    if (this.filterStatus !== 'all') {
+    const status = this.filterStatus();
+    if (status !== 'all') {
       const statusMap: Record<string, ExpenseStatus> = {
         pending: ExpenseStatus.PENDING,
         approved: ExpenseStatus.APPROVED,
         rejected: ExpenseStatus.REJECTED,
       };
-      const status = statusMap[this.filterStatus];
-      if (status) {
-        expenses = expenses.filter((e) => e.status === status);
+      const mappedStatus = statusMap[status];
+      if (mappedStatus) {
+        expenses = expenses.filter((e) => e.status === mappedStatus);
       }
     }
 
+    // Filter by category
+    const category = this.filterCategory();
+    if (category !== 'all') {
+      expenses = expenses.filter((e) => e.category === category);
+    }
+
     // Filter by user
-    if (this.filterUser !== 'all') {
-      expenses = expenses.filter((e) => e.userName === this.filterUser);
+    const user = this.filterUser();
+    if (user !== 'all') {
+      expenses = expenses.filter((e) => e.userName === user);
     }
 
     // Filter by search term
-    if (this.searchTerm.trim()) {
-      const term = this.searchTerm.toLowerCase();
+    const term = this.searchTerm().trim().toLowerCase();
+    if (term) {
       expenses = expenses.filter((e) =>
         e.description.toLowerCase().includes(term) ||
         e.category.toLowerCase().includes(term)
@@ -243,8 +274,9 @@ export class ExpensesViewComponent {
   }
 
   protected clearFilters(): void {
-    this.filterStatus = 'all';
-    this.filterUser = 'all';
-    this.searchTerm = '';
+    this.filterStatus.set('all');
+    this.filterCategory.set('all');
+    this.filterUser.set('all');
+    this.searchTerm.set('');
   }
 }

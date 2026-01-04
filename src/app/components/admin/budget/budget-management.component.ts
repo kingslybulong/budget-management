@@ -110,7 +110,7 @@ import { PesoPipe } from '../../../shared/pipes';
               <div class="row g-3">
                 <div class="col-6">
                   <label class="form-label">Month</label>
-                  <select class="form-select" [(ngModel)]="selectedMonth" (change)="loadBudget()">
+                  <select class="form-select" [ngModel]="selectedMonth()" (ngModelChange)="onMonthChange($event)">
                     @for (month of months; track month.value) {
                       <option [value]="month.value">{{ month.name }}</option>
                     }
@@ -118,7 +118,7 @@ import { PesoPipe } from '../../../shared/pipes';
                 </div>
                 <div class="col-6">
                   <label class="form-label">Year</label>
-                  <select class="form-select" [(ngModel)]="selectedYear" (change)="loadBudget()">
+                  <select class="form-select" [ngModel]="selectedYear()" (ngModelChange)="onYearChange($event)">
                     @for (year of years; track year) {
                       <option [value]="year">{{ year }}</option>
                     }
@@ -450,8 +450,8 @@ export class BudgetManagementComponent {
   private readonly budgetService = inject(BudgetService);
 
   /** Selected period */
-  protected selectedMonth = new Date().getMonth() + 1;
-  protected selectedYear = new Date().getFullYear();
+  protected readonly selectedMonth = signal(new Date().getMonth() + 1);
+  protected readonly selectedYear = signal(new Date().getFullYear());
 
   /** Month options */
   protected readonly months = [
@@ -500,12 +500,12 @@ export class BudgetManagementComponent {
 
   /** Budget data */
   protected readonly categories = computed(() => {
-    const budget = this.budgetService.getBudgetForMonth(this.selectedMonth, this.selectedYear);
+    const budget = this.budgetService.getBudgetForMonth(this.selectedMonth(), this.selectedYear());
     return budget?.categories ?? [];
   });
 
   protected readonly totalBudget = computed(() => {
-    const budget = this.budgetService.getBudgetForMonth(this.selectedMonth, this.selectedYear);
+    const budget = this.budgetService.getBudgetForMonth(this.selectedMonth(), this.selectedYear());
     return budget?.totalBudget ?? 0;
   });
 
@@ -522,10 +522,26 @@ export class BudgetManagementComponent {
   }
 
   /**
+   * Handle month change
+   */
+  protected onMonthChange(month: number): void {
+    this.selectedMonth.set(+month);
+    this.loadBudget();
+  }
+
+  /**
+   * Handle year change
+   */
+  protected onYearChange(year: number): void {
+    this.selectedYear.set(+year);
+    this.loadBudget();
+  }
+
+  /**
    * Load budget for selected period
    */
   protected loadBudget(): void {
-    const budget = this.budgetService.getBudgetForMonth(this.selectedMonth, this.selectedYear);
+    const budget = this.budgetService.getBudgetForMonth(this.selectedMonth(), this.selectedYear());
     this.monthlyBudget = budget?.totalBudget ?? 0;
     this.categoryLimits = this.categories().map((c) => c.monthlyLimit);
   }
@@ -544,8 +560,8 @@ export class BudgetManagementComponent {
    * Save monthly budget
    */
   protected async saveBudget(): Promise<void> {
-    console.log('saveBudget called with:', this.selectedMonth, this.selectedYear, this.monthlyBudget);
-    const result = await this.budgetService.setMonthlyBudget(this.selectedMonth, this.selectedYear, this.monthlyBudget);
+    console.log('saveBudget called with:', this.selectedMonth(), this.selectedYear(), this.monthlyBudget);
+    const result = await this.budgetService.setMonthlyBudget(this.selectedMonth(), this.selectedYear(), this.monthlyBudget);
     console.log('setMonthlyBudget result:', result);
     if (result) {
       this.successMessage.set('Monthly budget updated successfully!');
@@ -561,8 +577,8 @@ export class BudgetManagementComponent {
   protected async saveCategoryLimit(category: BudgetCategory, index: number): Promise<void> {
     const newLimit = this.categoryLimits[index];
     await this.budgetService.updateCategoryLimit(
-      this.selectedMonth,
-      this.selectedYear,
+      this.selectedMonth(),
+      this.selectedYear(),
       category.type,
       newLimit
     );
@@ -579,8 +595,8 @@ export class BudgetManagementComponent {
       const cat = cats[i];
       if (this.categoryLimits[i] !== cat.monthlyLimit) {
         await this.budgetService.updateCategoryLimit(
-          this.selectedMonth,
-          this.selectedYear,
+          this.selectedMonth(),
+          this.selectedYear(),
           cat.type,
           this.categoryLimits[i]
         );
@@ -607,8 +623,8 @@ export class BudgetManagementComponent {
     }
 
     const result = await this.budgetService.addCategory(
-      this.selectedMonth,
-      this.selectedYear,
+      this.selectedMonth(),
+      this.selectedYear(),
       this.newCategory.name.trim(),
       this.newCategory.limit,
       this.newCategory.icon,
@@ -635,8 +651,8 @@ export class BudgetManagementComponent {
     }
 
     const result = await this.budgetService.deleteCategory(
-      this.selectedMonth,
-      this.selectedYear,
+      this.selectedMonth(),
+      this.selectedYear(),
       category.id
     );
 

@@ -12,7 +12,7 @@ import {
   Timestamp,
   getDocs,
 } from '@angular/fire/firestore';
-import { Allowance, AllowanceTransaction, AllowanceSpendingCategory, SavingsGoal, BudgetCategoryType } from '../models';
+import { Allowance, AllowanceTransaction, SavingsGoal, BudgetCategoryType } from '../models';
 import { AuthService } from './auth.service';
 import { BudgetService } from './budget.service';
 
@@ -174,7 +174,7 @@ export class AllowanceService {
       userId: data['userId'],
       amount: data['amount'],
       description: data['description'],
-      category: data['category'] as AllowanceSpendingCategory,
+      category: data['category'] as string,
       date: data['date']?.toDate() ?? new Date(),
       createdAt: data['createdAt']?.toDate() ?? new Date(),
     };
@@ -457,32 +457,23 @@ export class AllowanceService {
   /**
    * Get spending by category for a user
    */
-  getSpendingByCategory(userId: string, month?: number, year?: number): Record<AllowanceSpendingCategory, number> {
+  getSpendingByCategory(userId: string, month?: number, year?: number): Record<string, number> {
     const now = new Date();
     const targetMonth = month ?? now.getMonth() + 1;
     const targetYear = year ?? now.getFullYear();
 
     const allowance = this.getAllowanceForUser(userId, targetMonth, targetYear);
     if (!allowance) {
-      return Object.values(AllowanceSpendingCategory).reduce((acc, cat) => ({ ...acc, [cat]: 0 }), {} as Record<AllowanceSpendingCategory, number>);
+      return {};
     }
 
     const transactions = this.transactionsSignal().filter(t => t.allowanceId === allowance.id);
 
-    const result: Record<AllowanceSpendingCategory, number> = {
-      [AllowanceSpendingCategory.FOOD_SNACKS]: 0,
-      [AllowanceSpendingCategory.ENTERTAINMENT]: 0,
-      [AllowanceSpendingCategory.SCHOOL_SUPPLIES]: 0,
-      [AllowanceSpendingCategory.TRANSPORTATION]: 0,
-      [AllowanceSpendingCategory.CLOTHING]: 0,
-      [AllowanceSpendingCategory.SAVINGS]: 0,
-      [AllowanceSpendingCategory.GIFTS]: 0,
-      [AllowanceSpendingCategory.OTHER]: 0,
-    };
+    const result: Record<string, number> = {};
 
     transactions.forEach(t => {
-      const category = t.category || AllowanceSpendingCategory.OTHER;
-      result[category] += t.amount;
+      const category = t.category || 'Other';
+      result[category] = (result[category] || 0) + t.amount;
     });
 
     return result;
@@ -602,6 +593,32 @@ export class AllowanceService {
   }
 
   /**
+   * Deduct from savings goal (when deleting a savings transaction)
+   */
+  async deductFromSavingsGoal(goalName: string, userId: string, amount: number): Promise<boolean> {
+    try {
+      // Find the goal by name for this user
+      const goal = this.savingsGoalsSignal().find(g => g.userId === userId && g.name === goalName);
+      if (!goal) return false;
+
+      const newAmount = Math.max(0, goal.currentAmount - amount);
+      const isCompleted = newAmount >= goal.targetAmount;
+
+      const goalRef = doc(this.firestore, 'savingsGoals', goal.id);
+      await updateDoc(goalRef, {
+        currentAmount: newAmount,
+        isCompleted,
+        updatedAt: Timestamp.now(),
+      });
+
+      return true;
+    } catch (error) {
+      console.error('Error deducting from savings goal:', error);
+      return false;
+    }
+  }
+
+  /**
    * Delete a savings goal
    */
   async deleteSavingsGoal(goalId: string): Promise<boolean> {
@@ -622,7 +639,7 @@ export class AllowanceService {
     userId: string,
     amount: number,
     description: string,
-    category: AllowanceSpendingCategory,
+    category: string,
     month?: number,
     year?: number
   ): Promise<boolean> {
@@ -654,6 +671,37 @@ export class AllowanceService {
       return true;
     } catch (error) {
       console.error('Error spending from allowance:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Delete a spending transaction and restore the amount to allowance
+   */
+  async deleteTransaction(transactionId: string): Promise<boolean> {
+    try {
+      // Find the transaction
+      const transaction = this.transactionsSignal().find(t => t.id === transactionId);
+      if (!transaction) return false;
+
+      // Find the allowance to restore the amount
+      const allowance = this.allowancesSignal().find(a => a.id === transaction.allowanceId);
+      if (allowance) {
+        // Restore the spent amount
+        const allowanceRef = doc(this.firestore, 'allowances', allowance.id);
+        await updateDoc(allowanceRef, {
+          spent: Math.max(0, allowance.spent - transaction.amount),
+          updatedAt: Timestamp.now(),
+        });
+      }
+
+      // Delete the transaction
+      const { deleteDoc } = await import('@angular/fire/firestore');
+      await deleteDoc(doc(this.firestore, 'allowanceTransactions', transactionId));
+
+      return true;
+    } catch (error) {
+      console.error('Error deleting transaction:', error);
       return false;
     }
   }

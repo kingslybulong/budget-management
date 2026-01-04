@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { BudgetService } from '../../../services';
@@ -28,14 +28,14 @@ import { PesoPipe } from '../../../shared/pipes';
               <label class="form-label mb-0">Viewing:</label>
             </div>
             <div class="col-auto">
-              <select class="form-select" [(ngModel)]="selectedMonth" (ngModelChange)="onMonthChange()">
+              <select class="form-select" [ngModel]="selectedMonth()" (ngModelChange)="selectedMonth.set(+$event)">
                 @for (month of availableMonths; track month.value) {
                   <option [value]="month.value">{{ month.label }}</option>
                 }
               </select>
             </div>
             <div class="col-auto">
-              <select class="form-select" [(ngModel)]="selectedYear" (ngModelChange)="onMonthChange()">
+              <select class="form-select" [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set(+$event)">
                 @for (year of availableYears; track year) {
                   <option [value]="year">{{ year }}</option>
                 }
@@ -111,8 +111,8 @@ import { PesoPipe } from '../../../shared/pipes';
 export class BudgetViewComponent {
   private readonly budgetService = inject(BudgetService);
 
-  protected selectedMonth = new Date().getMonth() + 1;
-  protected selectedYear = new Date().getFullYear();
+  protected readonly selectedMonth = signal(new Date().getMonth() + 1);
+  protected readonly selectedYear = signal(new Date().getFullYear());
 
   protected readonly availableMonths = [
     { value: 1, label: 'January' },
@@ -131,31 +131,21 @@ export class BudgetViewComponent {
 
   protected readonly availableYears = [2024, 2025, 2026];
 
-  protected readonly budgetCategories = signal<any[]>([]);
+  protected readonly budgetCategories = computed(() => {
+    const budget = this.budgetService.getBudget(this.selectedMonth(), this.selectedYear());
+    return budget?.categories || [];
+  });
 
-  constructor() {
-    this.loadBudget();
-  }
-
-  protected onMonthChange(): void {
-    this.loadBudget();
-  }
-
-  private loadBudget(): void {
-    const budget = this.budgetService.getBudget(this.selectedMonth, this.selectedYear);
-    this.budgetCategories.set(budget?.categories || []);
-  }
-
-  protected totalBudgetAmount(): number {
-    const budget = this.budgetService.getBudget(this.selectedMonth, this.selectedYear);
+  protected readonly totalBudgetAmount = computed(() => {
+    const budget = this.budgetService.getBudget(this.selectedMonth(), this.selectedYear());
     return budget?.totalBudget || 0;
-  }
+  });
 
-  protected totalSpent(): number {
+  protected readonly totalSpent = computed(() => {
     return this.budgetCategories().reduce((sum, c) => sum + c.spent, 0);
-  }
+  });
 
-  protected remaining(): number {
+  protected readonly remaining = computed(() => {
     return this.totalBudgetAmount() - this.totalSpent();
-  }
+  });
 }

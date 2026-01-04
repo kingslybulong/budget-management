@@ -22,23 +22,23 @@ export interface AllowanceTransaction {
   userId: string;
   amount: number;
   description: string;
-  category?: AllowanceSpendingCategory; // Personal spending category
+  category?: string; // Custom category (user-defined)
   date: Date;
   createdAt: Date;
 }
 
 /**
- * Personal spending categories for allowance
+ * Personal spending categories for allowance (suggestions only)
  */
 export enum AllowanceSpendingCategory {
-  FOOD_SNACKS = 'FOOD_SNACKS',
-  ENTERTAINMENT = 'ENTERTAINMENT',
-  SCHOOL_SUPPLIES = 'SCHOOL_SUPPLIES',
-  TRANSPORTATION = 'TRANSPORTATION',
-  CLOTHING = 'CLOTHING',
-  SAVINGS = 'SAVINGS',
-  GIFTS = 'GIFTS',
-  OTHER = 'OTHER'
+  FOOD_SNACKS = 'Food & Snacks',
+  ENTERTAINMENT = 'Entertainment',
+  SCHOOL_SUPPLIES = 'School Supplies',
+  TRANSPORTATION = 'Transportation',
+  CLOTHING = 'Clothing',
+  SAVINGS = 'Savings',
+  GIFTS = 'Gifts',
+  OTHER = 'Other'
 }
 
 /**
