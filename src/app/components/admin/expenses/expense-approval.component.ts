@@ -55,7 +55,7 @@ import { PesoPipe, CategoryNamePipe } from '../../../shared/pipes';
 
       <!-- Filter Tabs and Category Filter -->
       <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2 mb-4">
-        <ul class="nav nav-tabs mb-0 flex-nowrap overflow-auto" style="flex-shrink: 0;">
+        <ul class="nav nav-tabs mb-0 flex-nowrap" style="flex-shrink: 0;">
           <li class="nav-item">
             <button
               class="nav-link"
