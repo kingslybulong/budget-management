@@ -1,1 +1,147 @@
-/* You can add global styles to this file, and also import other style files */
+/* Bootstrap 5 */
+@import 'bootstrap/dist/css/bootstrap.min.css';
+
+/* Global Styles for Household Budget Management System */
+
+:root {
+  --app-primary: #0d6efd;
+  --app-success: #198754;
+  --app-warning: #ffc107;
+  --app-danger: #dc3545;
+  --app-info: #0dcaf0;
+  /* Custom Colors */
+  --app-purple: #6f42c1;
+  --app-pink: #d63384;
+  --app-orange: #fd7e14;
+  --app-teal: #20c997;
+  --app-indigo: #6610f2;
+  --app-brown: #795548;
+  --app-lime: #84cc16;
+  --app-coral: #ff6b6b;
+  --app-navy: #001f3f;
+}
+
+/* Custom Color Utilities - Text */
+.text-purple { color: var(--app-purple) !important; }
+.text-pink { color: var(--app-pink) !important; }
+.text-orange { color: var(--app-orange) !important; }
+.text-teal { color: var(--app-teal) !important; }
+.text-indigo { color: var(--app-indigo) !important; }
+.text-brown { color: var(--app-brown) !important; }
+.text-lime { color: var(--app-lime) !important; }
+.text-coral { color: var(--app-coral) !important; }
+.text-navy { color: var(--app-navy) !important; }
+
+/* Custom Color Utilities - Background */
+.bg-purple { background-color: var(--app-purple) !important; }
+.bg-pink { background-color: var(--app-pink) !important; }
+.bg-orange { background-color: var(--app-orange) !important; }
+.bg-teal { background-color: var(--app-teal) !important; }
+.bg-indigo { background-color: var(--app-indigo) !important; }
+.bg-brown { background-color: var(--app-brown) !important; }
+.bg-lime { background-color: var(--app-lime) !important; }
+.bg-coral { background-color: var(--app-coral) !important; }
+.bg-navy { background-color: var(--app-navy) !important; }
+
+/* Custom Color Utilities - Background Subtle */
+.bg-purple-subtle { background-color: rgba(111, 66, 193, 0.15) !important; }
+.bg-pink-subtle { background-color: rgba(214, 51, 132, 0.15) !important; }
+.bg-orange-subtle { background-color: rgba(253, 126, 20, 0.15) !important; }
+.bg-teal-subtle { background-color: rgba(32, 201, 151, 0.15) !important; }
+.bg-indigo-subtle { background-color: rgba(102, 16, 242, 0.15) !important; }
+.bg-brown-subtle { background-color: rgba(121, 85, 72, 0.15) !important; }
+.bg-lime-subtle { background-color: rgba(132, 204, 22, 0.15) !important; }
+.bg-coral-subtle { background-color: rgba(255, 107, 107, 0.15) !important; }
+.bg-navy-subtle { background-color: rgba(0, 31, 63, 0.15) !important; }
+
+/* Body defaults */
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* Card enhancements */
+.card {
+  border: none;
+  border-radius: 0.5rem;
+}
+
+.card-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Table enhancements */
+.table > :not(caption) > * > * {
+  padding: 0.875rem 1rem;
+}
+
+.table-hover > tbody > tr:hover {
+  background-color: rgba(13, 110, 253, 0.04);
+}
+
+/* Badge enhancements */
+.badge {
+  font-weight: 500;
+  padding: 0.4em 0.65em;
+}
+
+/* Button enhancements */
+.btn {
+  font-weight: 500;
+  border-radius: 0.375rem;
+}
+
+/* Progress bar enhancements */
+.progress {
+  border-radius: 0.5rem;
+  background-color: #e9ecef;
+}
+
+/* Alert enhancements */
+.alert {
+  border: none;
+  border-radius: 0.5rem;
+}
+
+/* List group enhancements */
+.list-group-item {
+  border-left: none;
+  border-right: none;
+}
+
+.list-group-item:first-child {
+  border-top: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .container-fluid {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  h1.h3 {
+    font-size: 1.5rem;
+  }
+}
+

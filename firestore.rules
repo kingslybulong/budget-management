@@ -1,0 +1,46 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function - check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Users collection - All authenticated users can read and write
+    match /users/{userId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Budgets collection - All authenticated users can read and write
+    match /budgets/{budgetId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Expenses collection - All authenticated users can read and write
+    match /expenses/{expenseId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Recurring expenses collection
+    match /recurringExpenses/{expenseId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Allowances collection - All authenticated users can read and write
+    match /allowances/{allowanceId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Allowance Transactions
+    match /allowanceTransactions/{transactionId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Savings Goals collection - All authenticated users can read and write
+    match /savingsGoals/{goalId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}
