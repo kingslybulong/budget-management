@@ -148,18 +148,18 @@ import { ChartConfiguration } from 'chart.js';
 
       <!-- More Charts -->
       <div class="row g-4 mb-4">
-        <!-- Income vs Expenses -->
+        <!-- Budget vs Actual Spending -->
         <div class="col-lg-6">
           <div class="card shadow-sm h-100">
             <div class="card-header bg-white">
               <h6 class="mb-0">
-                <i class="bi bi-bar-chart me-2"></i>Income vs Expenses
+                <i class="bi bi-bar-chart me-2"></i>Budget vs Actual Spending
               </h6>
             </div>
             <div class="card-body">
               <app-chart
                 type="bar"
-                [data]="incomeVsExpensesData()"
+                [data]="budgetVsActualData()"
                 [options]="barChartOptions"
                 height="280px"
               />
@@ -378,19 +378,25 @@ export class AnalyticsViewComponent {
     return colorMap[color] || colorMap['primary'];
   }
 
-  protected incomeVsExpensesData(): ChartConfiguration['data'] {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  protected budgetVsActualData(): ChartConfiguration['data'] {
+    const history = this.budgetService.getSpendingHistoryRange(
+      this.fromMonth,
+      this.fromYear,
+      this.toMonth,
+      this.toYear
+    );
+
     return {
-      labels: months,
+      labels: history.map((h) => h.month),
       datasets: [
         {
-          label: 'Income',
-          data: [50000, 50000, 52000, 50000, 55000, 50000],
+          label: 'Budget',
+          data: history.map((h) => h.limit || 0),
           backgroundColor: '#198754',
         },
         {
-          label: 'Expenses',
-          data: [42000, 38000, 45000, 40000, 48000, 43000],
+          label: 'Spent',
+          data: history.map((h) => h.amount),
           backgroundColor: '#ffc107',
         },
       ],
@@ -402,7 +408,11 @@ export class AnalyticsViewComponent {
     const userTotals: Record<string, number> = {};
 
     expenses.forEach((e) => {
-      userTotals[e.userName] = (userTotals[e.userName] || 0) + e.amount;
+      // Use the expense userName (who the expense is attributed to)
+      const displayName = e.userName || 'Unknown';
+      if (displayName && displayName !== 'Unknown') {
+        userTotals[displayName] = (userTotals[displayName] || 0) + e.amount;
+      }
     });
 
     const sorted = Object.entries(userTotals).sort((a, b) => b[1] - a[1]);
@@ -437,7 +447,11 @@ export class AnalyticsViewComponent {
     const userCounts: Record<string, number> = {};
 
     expenses.forEach((e) => {
-      userCounts[e.userName] = (userCounts[e.userName] || 0) + 1;
+      // Use the expense userName (who the expense is attributed to)
+      const displayName = e.userName;
+      if (displayName && displayName.trim()) {
+        userCounts[displayName] = (userCounts[displayName] || 0) + 1;
+      }
     });
 
     const sorted = Object.entries(userCounts).sort((a, b) => b[1] - a[1]);

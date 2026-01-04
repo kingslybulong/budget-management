@@ -207,13 +207,13 @@ export class ExpenseService {
               continue;
             }
 
-            // Create an expense record for tracking
+            // Create an expense record for tracking - attribute to target user for accurate family member tracking
             const newExpense: Record<string, any> = {
-              userId: recurring.userId,
-              userName: recurring.userName,
+              userId: recurring.targetUserId!,
+              userName: recurring.targetUserName!,
               amount: recurring.amount,
               category: recurring.category,
-              description: `[Recurring Allowance] ${recurring.description} for ${recurring.targetUserName}`,
+              description: `[Recurring Allowance] ${recurring.description}`,
               date: Timestamp.fromDate(expenseDate),
               status: ExpenseStatus.APPROVED,
               isRecurring: true,
